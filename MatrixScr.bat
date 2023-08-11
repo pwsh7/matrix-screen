@@ -252,3 +252,4 @@ Set /A Console_Height= ( ( Console_Height / 5 ) * 3 ) - 10
 		Set /A Xpos-=1,Ypos-=1,Char=!random! %%80 + 1,nCI=!random! %%!CI#! + 1
 		For %%B in (!nCI!) do %@P% !Ypos!;!Xpos! C!Char! !C#[1]!
 	)
+Goto :4loop
