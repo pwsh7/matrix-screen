@@ -113,3 +113,142 @@ cls & title Matrix Select
 	Set "C78=["
 	Set "C79=+"
 	Set "C80=-"
+
+	If Not "%~3"=="" (
+		Set "Console_Hieght=%~1"
+		Set "Console_Width=%~2"
+		Set "AlignFile=%~4"
+		Goto :%~3
+	) Else (Goto :main)
+
+%= Subroutine to process output of wmic command into usable variables  for screen dimensions (resolution) =%
+
+	:ChangeConsole <Lines> <Columns> <Label to Resume From> <If a 4th parameter is Defined, Aligns screen at top left>
+%= Get screen Dimensions =%
+	For /f "delims=" %%# in  ('"wmic path Win32_VideoController  get CurrentHorizontalResolution,CurrentVerticalResolution /format:value"') do (
+		Set "%%#">nul
+	)
+
+%= Calculation of X axis relative to screen resolution and console size =%
+
+	Set /A CentreX= ( ( CurrentHorizontalResolution / 2 ) - ( %~2 * 4 ) ) + 8
+
+%= Sub Optimal calculation of Y axis relative to screen resolution and console size =%
+	For /L %%A in (10,10,%1) DO Set /A VertMod+=1
+	Set /A CentreY= ( CurrentVerticalResolution / 4 ) - ( %~1 * Vertmod )
+	For /L %%B in (1,1,%VertMod%) do Set /A CentreY+= ( VertMod * 2 )
+
+%= Optional 4th parameter can be used to align console at top left of screen instead of screen centre =%
+	If Not "%~4"=="" (Set /A CentreY=0,CentreX=-8)
+
+	Set "Console_Width=%~2"
+
+%= Creates a batch file to reopen the main script using Call with parameters to define properties for console change and the label to resume from =%
+		(
+		Echo.@Mode Con: lines=%~1 cols=%~2
+		Echo.@Title Rainbow Matrix
+		Echo.@Call "%AlignFile%" "%~1" "%~2" "%~3" "%AlignFile%" 
+		)>"%temp%\ChangeConsole.bat"
+
+%= .Vbs script creation and launch to reopen batch with new console settings, combines with ChangeConsole.bat to control window size and position =%
+		(
+		Echo.Set objWMIService = GetObject^("winmgmts:\\.\root\cimv2"^)
+		Echo.Set objConfig = objWMIService.Get^("Win32_ProcessStartup"^)
+		Echo.objConfig.SpawnInstance_
+		Echo.objConfig.X = %CentreX%
+		Echo.objConfig.Y = %CentreY%
+		Echo.Set objNewProcess = objWMIService.Get^("Win32_Process"^)
+		Echo.intReturn = objNewProcess.Create^("%temp%\ChangeConsole.bat", Null, objConfig, intProcessID^)
+		)>"%temp%\Consolepos.vbs"
+
+%= Starts the companion batch script to Change Console properties, ends the parent =%
+	Start "" "%temp%\Consolepos.vbs" & Exit
+
+:main
+%= Remainder of Script examples the usage of Subroutines and macro's =%
+
+
+%= If a 4rd parameter is used, Console will be positioned at top left of screen =%
+
+	Call :ChangeConsole 45 170 Matrix top
+	
+:Matrix
+Setlocal enableDelayedExpansion
+
+%= Numbers higher than actual console hieght cause the the console to scroll. the higher the number, the smoother the scroll =%
+%= and the less dense the characters on screen will be. =%
+
+	Set /A Console_Hieght*=2
+
+%= Define menu options accessed with the choice command. Each option becomes a loop number equal to the errorlevel of the option. =%
+	Set "Opt1=(W)aterfall %yellow%Matrix"
+	Set "Opt2=(C)haos     %red%M%yellow%a%green%t%blue%r%purple%i%magenta%x"
+	Set "Opt3=%red%(%pink%R%magenta%)%purple%a%blue%i%aqua%n%cyan%b%green%o%yellow%w %red%painting"
+
+%= Display the menu options =%
+
+	Set "Opt1=(W)aterfall %cyan%Matrix"
+	Set "Opt2=(C)haos     %red%M%yellow%a%green%t%blue%r%purple%i%magenta%x"
+	Set "Opt3=%red%(%pink%R%magenta%)%purple%a%blue%i%aqua%n%cyan%b%green%o%yellow%w %red%painting"
+	Set "Opt4=(F)laming %yellow%Matrix"
+	%@P% 1;1 Opt1 blue
+	%@P% 2;1 Opt2 magenta
+	%@P% 3;1 Opt3 aqua
+	%@P% 4;1 Opt4 red
+%= Force selection of valid option, goto selected option as loop# =%
+	Choice /N /C WCRF /M ""
+	CLS & Goto :loop%Errorlevel%
+
+:loop1
+TITLE Flow Matrix
+:1loop
+	For /L %%A in (1,1,125) do (
+%= lower for loop end value equals faster transition, higher equals slower. Result of nCI color variable not being expanded with new value during for loop =%
+		Set /A Xpos=!random! %%!Console_Width! + 1,Ypos=!random! %%!Console_Hieght! + 1,Char=!random! %%80 + 1,nCI=!random! %%!CI#! + 1
+		%@P% !Ypos!;!Xpos! C!Char! !C#[%nCI%]!
+	)
+Goto :1loop
+
+:loop2
+TITLE Chaos Matrix
+:2loop
+	For /L %%A in (1,1,5000) do ( 
+		Set /A Xpos=!random! %%!Console_Width! + 1,Ypos=!random! %%!Console_Hieght! + 1,Char=!random! %%80 + 1,nCI=!random! %%!CI#! + 1
+		For %%B in (!nCI!) do %@P% !Ypos!;!Xpos! C!Char! !C#[%%B]!
+	)
+Goto :2loop
+
+:loop3
+TITLE Rainbow Painter
+	Set /A Console_Hieght=( Console_Hieght / 2 ) - 4
+:3loop
+	Set /A Xpos=!random! %%!Console_Width! + 1,Ypos=!random! %%!Console_Hieght! + 1,Char=!random! %%80 + 1,nCI=!random! %%!CI#! + 1
+	For %%B in (!nCI!) do %@P% !Ypos!;!Xpos! C!Char! !C#[%%B]!
+Goto :3loop
+
+:loop4
+TITLE Flaming Matrix
+Set /A Console_Height= ( ( Console_Height / 5 ) * 3 ) - 10
+:4loop
+	For /L %%A in (1,1,200000) do ( 
+		Set /A Xpos=!random! %%!Console_Width! + 1,Ypos=!random! %%!Console_Hieght! + 1,Char=!random! %%80 + 1,nCI=!random! %%!CI#! + 1
+		For %%B in (!nCI!) do %@P% !Ypos!;!Xpos! C!Char! !C#[2]!
+		Set /A Xpos-=1,Ypos+=1,Char=!random! %%80 + 1,nCI=!random! %%!CI#! + 1
+		For %%B in (!nCI!) do %@P% !Ypos!;!Xpos! C!Char! !C#[1]!
+		Set /A Xpos=!random! %%!Console_Width! + 1,Ypos=!random! %%!Console_Hieght! + 1,Char=!random! %%80 + 1,nCI=!random! %%!CI#! + 1
+		For %%B in (!nCI!) do %@P% !Ypos!;!Xpos! C!Char! !C#[2]!
+		Set /A Xpos-=1,Ypos+=1,Char=!random! %%80 + 1,nCI=!random! %%!CI#! + 1
+		For %%B in (!nCI!) do %@P% !Ypos!;!Xpos! C!Char! !C#[1]!
+		Set /A Xpos=!random! %%!Console_Width! + 1,Ypos=!random! %%!Console_Hieght! + 1,Char=!random! %%80 + 1,nCI=!random! %%!CI#! + 1
+		For %%B in (!nCI!) do %@P% !Ypos!;!Xpos! C!Char! !C#[2]!
+		Set /A Xpos+=1,Ypos+=1,Char=!random! %%80 + 1,nCI=!random! %%!CI#! + 1
+		For %%B in (!nCI!) do %@P% !Ypos!;!Xpos! C!Char! !C#[1]!
+		Set /A Xpos=!random! %%!Console_Width! + 1,Ypos=!random! %%!Console_Hieght! + 1,Char=!random! %%80 + 1,nCI=!random! %%!CI#! + 1
+		For %%B in (!nCI!) do %@P% !Ypos!;!Xpos! C!Char! !C#[2]!
+		Set /A Xpos+=1,Ypos-=1,Char=!random! %%80 + 1,nCI=!random! %%!CI#! + 1
+		For %%B in (!nCI!) do %@P% !Ypos!;!Xpos! C!Char! !C#[1]!
+		Set /A Xpos=!random! %%!Console_Width! + 1,Ypos=!random! %%!Console_Hieght! + 1,Char=!random! %%80 + 1,nCI=!random! %%!CI#! + 1
+		For %%B in (!nCI!) do %@P% !Ypos!;!Xpos! C!Char! !C#[2]!
+		Set /A Xpos-=1,Ypos-=1,Char=!random! %%80 + 1,nCI=!random! %%!CI#! + 1
+		For %%B in (!nCI!) do %@P% !Ypos!;!Xpos! C!Char! !C#[1]!
+	)
